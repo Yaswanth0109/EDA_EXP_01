@@ -31,121 +31,349 @@ To perform Exploratory Data Analysis (EDA) on the IPL matches dataset and derive
   
 ## Program
   
-  #### Basic info about dataset:
-```
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-# Load dataset
+  #### Load Dataset
+  ```
 df = pd.read_csv("matches.csv")
 
-# Display dataset information
-print("Dataset Shape:", df.shape)
+print("\nDataset Loaded Successfully!")
+```
+#### Understanding the Dataset
+```
+print("\n========== A. UNDERSTANDING THE DATASET ==========")
 
-print("\nFirst 5 Rows:")
-print(df.head())
+print("\n1. DATASET SIZE")
+print("Number of Rows   :", df.shape[0])
+print("Number of Columns:", df.shape[1])
+
+print("\nFirst 5 Records:")
+print(df.head().to_string())
+
+print("\n2. COLUMNS AND DATA TYPES")
+print(df.dtypes.to_string())
+
+print("\n3. UNIQUE IDENTIFIER")
+print("Total Records :", len(df))
+print("Unique IDs    :", df["id"].nunique())
+print("Is ID Unique? :", df["id"].is_unique)
 ```
-#### Matches Per Season
+####  Data Quality and Cleaning
 ```
-matches_per_season = df['season'].value_counts().sort_index()
+print("\n========== B. DATA QUALITY AND CLEANING ==========")
+
+missing_values = df.isnull().sum()
+
+print(
+    missing_values[
+        missing_values > 0
+    ].to_string()
+)
+
+print("Number of Duplicate Rows:",
+      df.duplicated().sum())
+
+df["city"] = df["city"].fillna("Unknown")
+
+df = df.drop_duplicates()
+
+print("Missing City values after cleaning:",
+      df["city"].isnull().sum())
+
+print("Duplicates after cleaning:",
+      df.duplicated().sum())
+```
+
+####  Matches Per Season
+
+```
+matches_per_season = (
+    df.groupby("season")
+      .size()
+)
 
 print(matches_per_season)
 
-plt.figure(figsize=(10,5))
-matches_per_season.plot(kind='bar', color='skyblue')
+print(matches_per_season.idxmax())
+print(matches_per_season.max())
+```
+#### Matches Per Season Visualization
+```
+matches_per_season.plot(
+    kind="bar",
+    figsize=(11,5)
+)
 
-plt.title("Matches Per Season")
+plt.title("IPL Matches Per Season")
 plt.xlabel("Season")
 plt.ylabel("Number of Matches")
-
 plt.xticks(rotation=45)
-plt.grid(axis='y', linestyle='--', alpha=0.7)
-
+plt.tight_layout()
 plt.show()
 ```
-#### Top Winning Teams
+
+#### Team Performance
 ```
-top_teams = df['winner'].value_counts().head(5)
+team_wins = (
+    df.dropna(subset=["winner"])
+      .groupby("winner")
+      .size()
+      .sort_values(ascending=False)
+)
 
-print("\nTop 5 Winning Teams:")
-print(top_teams)
+print(team_wins)
 
-plt.figure(figsize=(10,5))
-top_teams.plot(kind='bar', color='lightgreen')
+top_5_teams = team_wins.head(5)
 
-plt.title("Top 5 Winning Teams")
+print(top_5_teams)
+```
+### Team Performance Visualization
+
+```python
+top_5_teams.plot(
+    kind="bar",
+    figsize=(9,5)
+)
+
+plt.title("Top 5 IPL Teams by Match Wins")
 plt.xlabel("Team")
 plt.ylabel("Number of Wins")
-
-plt.xticks(rotation=20)
-plt.grid(axis='y', linestyle='--', alpha=0.7)
-
+plt.xticks(rotation=45, ha="right")
+plt.tight_layout()
 plt.show()
 ```
+### Filtering
 
-#### Toss Decisions
-```toss_decision = df['toss_decision'].value_counts()
+```python
+csk_wins = df[
+    df["winner"] == "Chennai Super Kings"
+]
 
-print("\nToss Decisions:")
-print(toss_decision)
+print(
+    csk_wins[
+        ["season","team1","team2","winner"]
+    ].head(10).to_string(index=False)
+)
 
-plt.figure(figsize=(6,5))
-toss_decision.plot(kind='bar', color='orange')
+print("Total CSK Wins:", len(csk_wins))
+```
 
-plt.title("Toss Decisions")
+### Toss Decision Analysis
+
+```python
+toss_decisions = (
+    df["toss_decision"]
+      .value_counts()
+)
+
+print(toss_decisions)
+
+toss_percentage = (
+    df["toss_decision"]
+      .value_counts(normalize=True)
+      * 100
+)
+
+print(toss_percentage.round(2))
+```
+
+### Toss Decision Visualization
+
+```python
+toss_decisions.plot(
+    kind="bar",
+    figsize=(6,4)
+)
+
+plt.title("Toss Decision Preference")
 plt.xlabel("Decision")
-plt.ylabel("Count")
-
-plt.grid(axis='y', linestyle='--', alpha=0.7)
-
-plt.show()
-```
-#### Top Venues
-```
-top_venues = df['venue'].value_counts().head(5)
-
-print("\nTop 5 Venues:")
-print(top_venues)
-
-plt.figure(figsize=(10,5))
-top_venues.plot(kind='barh', color='violet')
-
-plt.title("Top 5 Venues")
-plt.xlabel("Number of Matches")
-plt.ylabel("Venue")
-
-plt.grid(axis='x', linestyle='--', alpha=0.7)
-plt.show()
-plt.grid(axis='x', linestyle='--', alpha=0.7)
+plt.ylabel("Number of Matches")
+plt.xticks(rotation=0)
+plt.tight_layout()
 plt.show()
 ```
 
-#### Insights
+### Cross Tabulation
+
+```python
+toss_by_season = pd.crosstab(
+    df["season"],
+    df["toss_decision"]
+)
+
+print(toss_by_season)
+
+print(
+    toss_by_season
+    .idxmax(axis=1)
+)
 ```
-print("\nINSIGHTS")
-print("1. The number of IPL matches varies across seasons.")
-print("2. Mumbai Indians have won the highest number of matches.")
-print("3. Teams generally prefer either batting or fielding after winning the toss.")
-print("4. Some venues host significantly more IPL matches than others.")
-print("5. These observations help understand trends in IPL matches.")
+
+### Venue Analysis
+
+```python
+top_5_venues = (
+    df.groupby("venue")
+      .size()
+      .sort_values(ascending=False)
+      .head(5)
+)
+
+print(top_5_venues)
 ```
+
+### Winning Margin Analysis
+
+```python
+largest_margin = df["result_margin"].max()
+
+largest_index = df["result_margin"].idxmax()
+
+largest_match = df.loc[largest_index]
+
+print(largest_margin)
+
+print(
+    largest_match[
+        [
+            "season",
+            "team1",
+            "team2",
+            "winner",
+            "result",
+            "result_margin"
+        ]
+    ]
+)
+```
+
+### Top 10 Winning Margins
+
+```python
+top_10_margins = (
+    df.sort_values(
+        by="result_margin",
+        ascending=False
+    )
+    .head(10)
+)
+
+print(
+    top_10_margins[
+        [
+            "season",
+            "team1",
+            "team2",
+            "winner",
+            "result_margin"
+        ]
+    ]
+)
+```
+
+### Match Result Analysis
+
+```python
+result_types = (
+    df["result"]
+      .value_counts()
+)
+
+print(result_types)
+```
+
+### Data Transformation
+
+```python
+df["date"] = pd.to_datetime(
+    df["date"],
+    errors="coerce"
+)
+
+df["year"] = df["date"].dt.year
+
+df["win_type"] = (
+    df["result"]
+      .replace({
+          "runs": "Won by Runs",
+          "wickets": "Won by Wickets",
+          "tie": "Tie",
+          "no result": "No Result"
+      })
+)
+```
+
+### Save Cleaned Dataset
+
+```python
+df.to_csv(
+    "IPL_Matches_Cleaned.csv",
+    index=False
+)
+```
+
 ## Output
-#### Basic info about dataset:
-<img width="1141" height="368" alt="image" src="https://github.com/user-attachments/assets/1ab4d766-66ab-4390-8ea1-4ceaf87827ea" />
+### Dataset Loaded Successfully
 
-#### Matches per season:
-<img width="797" height="458" alt="image" src="https://github.com/user-attachments/assets/876f3654-ce00-4f7c-bb6b-06e7e6e59a8d" />
+<img width="292" height="45" alt="Screenshot 2026-08-05 190457" src="https://github.com/user-attachments/assets/68cd1c2b-43d8-4f12-8ddb-f4519c25abcb" />
 
-#### Top Winning Teams:
-<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/22728ac4-3011-4c12-8286-ef4a24c7c1d6" />
+---
 
-#### Toss Decisions:
-<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/1c634e2f-4760-4475-9b61-7309447a86d3" />
+### Dataset Information
 
-#### Top Venues:
-<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/767bc998-7d87-4431-be16-5c7012129d2b" />
+<img width="622" height="925" alt="Screenshot 2026-08-05 190742" src="https://github.com/user-attachments/assets/d5e4a303-a4e1-4891-94cc-4afb2bd9bb4a" />
 
+---
+
+### Matches per Season
+
+<img width="227" height="450" alt="Screenshot 2026-08-05 190849" src="https://github.com/user-attachments/assets/7846a640-277c-4e86-af53-88e6d24cff65" />
+
+---
+
+<img width="730" height="623" alt="Screenshot 2026-08-05 190914" src="https://github.com/user-attachments/assets/5fdf8b56-e22a-4471-8741-79acf194f7ec" />
+
+---
+
+### Top 5 Winning Teams
+
+<img width="790" height="782" alt="image" src="https://github.com/user-attachments/assets/41e0c02a-61b5-4edd-8cd9-7d594feab969" />
+
+---
+
+### Toss Decision Analysis
+
+<img width="731" height="563" alt="Screenshot 2026-08-05 193206" src="https://github.com/user-attachments/assets/575c1318-6d81-4758-8996-70d82ef8cce0" />
+
+---
+
+### Cross-Tabulation
+
+<img width="285" height="405" alt="image" src="https://github.com/user-attachments/assets/dfc6a0c4-6dfa-4d2b-83c9-e37e86efee25" />
+
+---
+
+### Top 5 Venues
+
+<img width="461" height="148" alt="Screenshot 2026-08-05 193849" src="https://github.com/user-attachments/assets/fd124917-5dc7-4346-bf27-ce955e8e561e" />
+
+---
+
+### Winning Margin Analysis
+
+<img width="732" height="648" alt="Screenshot 2026-08-05 194019" src="https://github.com/user-attachments/assets/236524c7-548b-49dc-9483-3d8f868bd141" />
+
+---
+
+### Match Result Analysis
+
+<img width="262" height="137" alt="Screenshot 2026-08-05 194104" src="https://github.com/user-attachments/assets/97c1b34b-e498-4143-aa80-65a14b442500" />
+
+---
+
+### Data Transformation
+
+<img width="452" height="387" alt="Screenshot 2026-08-05 194152" src="https://github.com/user-attachments/assets/63a0009f-b1bf-4b8b-affa-a9de6d909152" />
+
+---
 ## Result
 Thus, the Exploratory Data Analysis (EDA) on the IPL matches dataset was performed successfully.
 The analysis identified the number of matches played each season, the top winning teams, toss decision preferences,
